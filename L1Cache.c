@@ -5,7 +5,6 @@ unsigned char L2Cache[L2_SIZE];
 unsigned char DRAM[DRAM_SIZE];
 unsigned int time;
 Cache SimpleCache;
-unsigned int lines = 256;
 
 /**************** Time Manipulation ***************/
 void resetTime() { time = 0; }
@@ -40,7 +39,7 @@ void accessL1(int address, unsigned char *data, int mode) {
 
   /* init cache */
   if (SimpleCache.init == 0) {
-    for (index = 0; index < lines; index = index + BLOCK_SIZE) {
+    for (index = 0; index < L1_SIZE; index = index + BLOCK_SIZE) {
       SimpleCache.lines[index].Valid = 0;
     }
     SimpleCache.init = 1;

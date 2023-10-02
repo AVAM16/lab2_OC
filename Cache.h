@@ -1,7 +1,7 @@
 #define WORD_SIZE 4                 // in bytes, i.e 32 bit words
 #define BLOCK_SIZE 2 * WORD_SIZE    // in bytes
 #define DRAM_SIZE 1024 * BLOCK_SIZE // in bytes
-#define L1_SIZE 1 * BLOCK_SIZE      // in bytes
+#define L1_SIZE 256 * BLOCK_SIZE      // in bytes
 #define L2_SIZE 512 * BLOCK_SIZE    // in bytes
 
 #define MODE_READ 1
