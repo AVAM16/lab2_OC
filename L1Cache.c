@@ -45,48 +45,51 @@ void accessL1(uint32_t address, uint8_t *data, uint32_t mode) {
     SimpleCache.init = 1;
   }
 
+  for(index = 0; index < L1_SIZE; index = index + BLOCK_SIZE) {
+    CacheLine *Line = &SimpleCache.lines[index];
 
-  CacheLine *Line = &SimpleCache.line;
+    Tag = address >> 3; // Why do I do this?
 
-  Tag = address >> 3; // Why do I do this?
+    MemAddress = address >> 3; // again this....!
+    MemAddress = MemAddress << 3; // address of the block in memory
 
-  MemAddress = address >> 3; // again this....!
-  MemAddress = MemAddress << 3; // address of the block in memory
+    /* access Cache*/
 
-  /* access Cache*/
+    if (!Line->Valid || Line->Tag != Tag) {         // if block not present - miss
+      accessDRAM(MemAddress, TempBlock, MODE_READ); // get new block from DRAM
 
-  if (!Line->Valid || Line->Tag != Tag) {         // if block not present - miss
-    accessDRAM(MemAddress, TempBlock, MODE_READ); // get new block from DRAM
+      if ((Line->Valid) && (Line->Dirty)) { // line has dirty block
+        accessDRAM(MemAddress, &(L1Cache[0]),
+                  MODE_WRITE); // then write back old block
+      }
 
-    if ((Line->Valid) && (Line->Dirty)) { // line has dirty block
-      accessDRAM(MemAddress, &(L1Cache[0]),
-                 MODE_WRITE); // then write back old block
+      memcpy(&(L1Cache[0]), TempBlock,
+            BLOCK_SIZE); // copy new block to cache line
+      Line->Valid = 1;
+      Line->Tag = Tag;
+      Line->Dirty = 0;
+    } // if miss, then replaced with the correct block
+
+    if (mode == MODE_READ) {    // read data from cache line
+      if (0 == (address % 8)) { // even word on block
+        memcpy(data, &(L1Cache[0]), WORD_SIZE);
+      } else { // odd word on block
+        memcpy(data, &(L1Cache[WORD_SIZE]), WORD_SIZE);
+      }
+      time += L1_READ_TIME;
     }
 
-    memcpy(&(L1Cache[0]), TempBlock,
-           BLOCK_SIZE); // copy new block to cache line
-    Line->Valid = 1;
-    Line->Tag = Tag;
-    Line->Dirty = 0;
-  } // if miss, then replaced with the correct block
-
-  if (mode == MODE_READ) {    // read data from cache line
-    if (0 == (address % 8)) { // even word on block
-      memcpy(data, &(L1Cache[0]), WORD_SIZE);
-    } else { // odd word on block
-      memcpy(data, &(L1Cache[WORD_SIZE]), WORD_SIZE);
+    if (mode == MODE_WRITE) { // write data from cache line
+      if (!(address % 8)) {   // even word on block
+        memcpy(&(L1Cache[0]), data, WORD_SIZE);
+      } else { // odd word on block
+        memcpy(&(L1Cache[WORD_SIZE]), data, WORD_SIZE);
+      }
+      time += L1_WRITE_TIME;
+      Line->Dirty = 1;
     }
-    time += L1_READ_TIME;
-  }
-
-  if (mode == MODE_WRITE) { // write data from cache line
-    if (!(address % 8)) {   // even word on block
-      memcpy(&(L1Cache[0]), data, WORD_SIZE);
-    } else { // odd word on block
-      memcpy(&(L1Cache[WORD_SIZE]), data, WORD_SIZE);
-    }
-    time += L1_WRITE_TIME;
-    Line->Dirty = 1;
+    
+    address = address + WORD_SIZE;
   }
 }
 
