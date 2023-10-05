@@ -32,7 +32,7 @@ void accessDRAM(uint32_t address, uint8_t *data, uint32_t mode) {
 
 void initCache() { SimpleCache.init = 0; }
 
-void accessL1(uint32_t address, uint8_t *data, uint32_t mode) {
+void accessL1(uint32_t address, uint8_t **data, uint32_t mode) {
 
   uint32_t index, Tag, MemAddress;
   uint8_t TempBlock[BLOCK_SIZE];
@@ -72,31 +72,31 @@ void accessL1(uint32_t address, uint8_t *data, uint32_t mode) {
 
     if (mode == MODE_READ) {    // read data from cache line
       if (0 == (address % 8)) { // even word on block
-        memcpy(data, &(L1Cache[0]), WORD_SIZE);
+        memcpy(data[index], &(L1Cache[0]), WORD_SIZE);
       } else { // odd word on block
-        memcpy(data, &(L1Cache[WORD_SIZE]), WORD_SIZE);
+        memcpy(data[index], &(L1Cache[WORD_SIZE]), WORD_SIZE);
       }
       time += L1_READ_TIME;
     }
 
     if (mode == MODE_WRITE) { // write data from cache line
       if (!(address % 8)) {   // even word on block
-        memcpy(&(L1Cache[0]), data, WORD_SIZE);
+        memcpy(&(L1Cache[0]), data[index], WORD_SIZE);
       } else { // odd word on block
-        memcpy(&(L1Cache[WORD_SIZE]), data, WORD_SIZE);
+        memcpy(&(L1Cache[WORD_SIZE]), data[index], WORD_SIZE);
       }
       time += L1_WRITE_TIME;
       Line->Dirty = 1;
     }
     
-    address = address + WORD_SIZE;
+    address = address + BLOCK_SIZE;
   }
 }
 
-void read(uint32_t address, uint8_t *data) {
+void read(uint32_t address, uint8_t **data) {
   accessL1(address, data, MODE_READ);
 }
 
-void write(uint32_t address, uint8_t *data) {
+void write(uint32_t address, uint8_t **data) {
   accessL1(address, data, MODE_WRITE);
 }
