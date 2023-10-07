@@ -32,7 +32,7 @@ void accessDRAM(uint32_t address, uint8_t *data, uint32_t mode) {
 
 void initCache() { SimpleCache.init = 0; }
 
-void accessL1(uint32_t address, uint8_t **data, uint32_t mode) {
+void accessL1(uint32_t address, uint8_t *data, uint32_t mode) {
 
   uint32_t index, Tag, MemAddress;
   uint8_t TempBlock[BLOCK_SIZE];
@@ -93,10 +93,10 @@ void accessL1(uint32_t address, uint8_t **data, uint32_t mode) {
   }
 }
 
-void read(uint32_t address, uint8_t **data) {
+void read(uint32_t address, uint8_t *data) {
   accessL1(address, data, MODE_READ);
 }
 
-void write(uint32_t address, uint8_t **data) {
+void write(uint32_t address, uint8_t *data) {
   accessL1(address, data, MODE_WRITE);
 }
