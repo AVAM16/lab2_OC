@@ -38,13 +38,13 @@ void accessL1(uint32_t address, uint8_t *data, uint32_t mode) {
 
   /* init cache */
   if (L1.init == 0) {
-    // L1.lines = (CacheLine *)malloc((L1_SIZE/BLOCK_SIZE) * sizeof(CacheLine));
+    // L1.line = (CacheLine *)malloc((L1_SIZE/BLOCK_SIZE) * sizeof(CacheLine));
     for (int i = 0; i < L1_SIZE/BLOCK_SIZE; i++) {
       L1.lines[i].Valid = 0;
       L1.lines[i].Dirty = 0;
       L1.lines[i].Tag = 0;
       // for (int j =0; j< BLOCK_SIZE; j+=WORD_SIZE){
-      //   L1.lines[i].dados=0;
+      //   L1.line[i].dados=0;
       // }
       
     }

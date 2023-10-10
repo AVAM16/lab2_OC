@@ -23,12 +23,13 @@ typedef struct CacheLine {
   uint8_t Valid;
   uint8_t Dirty;
   uint32_t Tag;
-  
+  uint8_t dados[BLOCK_SIZE];
 } CacheLine;
 
 typedef struct Cache {
-  uint32_t init;
-  CacheLine lines[L1_SIZE/BLOCK_SIZE];
+  uint32_t init1;
+  uint32_t init2;
+  CacheLine lines1[L1_SIZE/BLOCK_SIZE];
   CacheLine lines2[L2_SIZE/BLOCK_SIZE];
 } Cache;
 
