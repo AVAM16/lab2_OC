@@ -34,37 +34,39 @@ void initCache() { SimpleCache.init = 0; }
 
 void accessL1(uint32_t address, uint8_t *data, uint32_t mode) {
 
-  uint32_t index, Tag, MemAddress;
+  uint32_t index, Tag, offset;
   uint8_t TempBlock[BLOCK_SIZE];
 
   /* init cache */
   if (SimpleCache.init == 0) {
-    SimpleCache.lines = (CacheLine *)malloc((L1_SIZE/BLOCK_SIZE) * sizeof(CacheLine));
-    for (index = 0; index < L1_SIZE/BLOCK_SIZE; index++) {
-      SimpleCache.lines[index].Valid = 0;
-      SimpleCache.lines[index].Dirty = 0;
-      SimpleCache.lines[index].Tag = 0;
+    // SimpleCache.lines = (CacheLine *)malloc((L1_SIZE/BLOCK_SIZE) * sizeof(CacheLine));
+    for (int i = 0; i < L1_SIZE/BLOCK_SIZE; i++) {
+      SimpleCache.lines[i].Valid = 0;
+      SimpleCache.lines[i].Dirty = 0;
+      SimpleCache.lines[i].Tag = 0;
+      // for (int j =0; j< BLOCK_SIZE; j+=WORD_SIZE){
+      //   SimpleCache.lines[i].dados=0;
+      // }
       
     }
     SimpleCache.init = 1;
   }
 
-  Tag = address >> 3; // Why do I do this? isolar a tag
-
-  MemAddress = address >> 3; // again this....!
-  MemAddress = MemAddress << 3; // address of the block in memory
+  Tag = address / ((L1_SIZE / BLOCK_SIZE) * BLOCK_SIZE);
+  index = (address / BLOCK_SIZE) % (L1_SIZE / BLOCK_SIZE);
+  offset = address % BLOCK_SIZE;
 
     /* access Cache*/
-  CacheLine *Line = &SimpleCache.lines;
+  CacheLine *Line = &SimpleCache.lines[index];
   if (!Line->Valid || Line->Tag != Tag) {         // if block not present - miss
-      accessDRAM(MemAddress, TempBlock, MODE_READ); // get new block from DRAM
+      accessDRAM(address-offset, TempBlock, MODE_READ); // get new block from DRAM
 
       if ((Line->Valid) && (Line->Dirty)) { // line has dirty block
-        accessDRAM(MemAddress, &(L1Cache[0]),
+        accessDRAM(address-offset, &(L1Cache[index*BLOCK_SIZE]),
                   MODE_WRITE); // then write back old block
       }
 
-      memcpy(&(L1Cache[0]), TempBlock,
+      memcpy(&(L1Cache[index*BLOCK_SIZE]), TempBlock,
             BLOCK_SIZE); // copy new block to cache line
       Line->Valid = 1;
       Line->Tag = Tag;
@@ -72,19 +74,19 @@ void accessL1(uint32_t address, uint8_t *data, uint32_t mode) {
     } // if miss, then replaced with the correct block
 
   if (mode == MODE_READ) {    // read data from cache line
-    if (0 == (address % 8)) { // even word on block
-      memcpy(&(data), &(L1Cache[0]), WORD_SIZE);
+    if (0 == (address % 64)) { // even word on block
+      memcpy(&(data), &(L1Cache[index*BLOCK_SIZE]), WORD_SIZE);
     } else { // odd word on block
-      memcpy(&(data), &(L1Cache[WORD_SIZE]), WORD_SIZE);
+      memcpy(&(data), &(L1Cache[index*BLOCK_SIZE+ offset]), WORD_SIZE);
     }
     time += L1_READ_TIME;
   }
 
   if (mode == MODE_WRITE) { // write data from cache line
-    if (!(address % 8)) {   // even word on block
-      memcpy(&(L1Cache[0]), &(data), WORD_SIZE);
+    if (!(address % 64)) {   // even word on block
+      memcpy(&(L1Cache[index*BLOCK_SIZE]), &(data), WORD_SIZE);
     } else { // odd word on block
-      memcpy(&(L1Cache[WORD_SIZE]), &(data), WORD_SIZE);
+      memcpy(&(L1Cache[index*BLOCK_SIZE+offset]), &(data), WORD_SIZE);
     }
     time += L1_WRITE_TIME;
     Line->Dirty = 1;
