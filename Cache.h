@@ -2,9 +2,9 @@
 #define CACHE_H
 
 #define WORD_SIZE 4                 // in bytes, i.e 32 bit words
-#define BLOCK_SIZE (16 * WORD_SIZE)    // in bytes
+#define BLOCK_SIZE (16 * WORD_SIZE)    // um bloco tem 16 ints
 #define DRAM_SIZE (1024 * BLOCK_SIZE) // in bytes
-#define L1_SIZE (256 * BLOCK_SIZE)      // in bytes
+#define L1_SIZE (256 * BLOCK_SIZE)      // 2^8 *2^6= 2^14 (16kB=4096B) (256 blocos)
 #define L2_SIZE (512 * BLOCK_SIZE)    // in bytes
 
 #define MODE_READ 1

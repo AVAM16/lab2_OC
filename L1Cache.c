@@ -32,31 +32,31 @@ void accessDRAM(uint32_t address, uint8_t *data, uint32_t mode) {
 
 void initCache() { SimpleCache.init = 0; }
 
-void accessL1(uint32_t address, uint8_t **data, uint32_t mode) {
+void accessL1(uint32_t address, uint8_t *data, uint32_t mode) {
 
   uint32_t index, Tag, MemAddress;
   uint8_t TempBlock[BLOCK_SIZE];
 
   /* init cache */
   if (SimpleCache.init == 0) {
-    SimpleCache.lines = (CacheLine *)malloc(L1_SIZE * sizeof(CacheLine));
-    for (index = 0; index < L1_SIZE; index = index + BLOCK_SIZE) {
+    SimpleCache.lines = (CacheLine *)malloc((L1_SIZE/BLOCK_SIZE) * sizeof(CacheLine));
+    for (index = 0; index < L1_SIZE/BLOCK_SIZE; index++) {
       SimpleCache.lines[index].Valid = 0;
+      SimpleCache.lines[index].Dirty = 0;
+      SimpleCache.lines[index].Tag = 0;
+      
     }
     SimpleCache.init = 1;
   }
 
-  for(index = 0; index < L1_SIZE; index = index + BLOCK_SIZE) {
-    CacheLine *Line = &SimpleCache.lines[index];
+  Tag = address >> 3; // Why do I do this? isolar a tag
 
-    Tag = address >> 3; // Why do I do this?
-
-    MemAddress = address >> 3; // again this....!
-    MemAddress = MemAddress << 3; // address of the block in memory
+  MemAddress = address >> 3; // again this....!
+  MemAddress = MemAddress << 3; // address of the block in memory
 
     /* access Cache*/
-
-    if (!Line->Valid || Line->Tag != Tag) {         // if block not present - miss
+  CacheLine *Line = &SimpleCache.lines;
+  if (!Line->Valid || Line->Tag != Tag) {         // if block not present - miss
       accessDRAM(MemAddress, TempBlock, MODE_READ); // get new block from DRAM
 
       if ((Line->Valid) && (Line->Dirty)) { // line has dirty block
@@ -71,33 +71,32 @@ void accessL1(uint32_t address, uint8_t **data, uint32_t mode) {
       Line->Dirty = 0;
     } // if miss, then replaced with the correct block
 
-    if (mode == MODE_READ) {    // read data from cache line
-      if (0 == (address % 8)) { // even word on block
-        memcpy(&(data[index]), &(L1Cache[0]), WORD_SIZE);
-      } else { // odd word on block
-        memcpy(&(data[index]), &(L1Cache[WORD_SIZE]), WORD_SIZE);
-      }
-      time += L1_READ_TIME;
+  if (mode == MODE_READ) {    // read data from cache line
+    if (0 == (address % 8)) { // even word on block
+      memcpy(&(data), &(L1Cache[0]), WORD_SIZE);
+    } else { // odd word on block
+      memcpy(&(data), &(L1Cache[WORD_SIZE]), WORD_SIZE);
     }
-
-    if (mode == MODE_WRITE) { // write data from cache line
-      if (!(address % 8)) {   // even word on block
-        memcpy(&(L1Cache[0]), &(data[index]), WORD_SIZE);
-      } else { // odd word on block
-        memcpy(&(L1Cache[WORD_SIZE]), &(data[index]), WORD_SIZE);
-      }
-      time += L1_WRITE_TIME;
-      Line->Dirty = 1;
-    }
-    
-    address = address + BLOCK_SIZE;
+    time += L1_READ_TIME;
   }
+
+  if (mode == MODE_WRITE) { // write data from cache line
+    if (!(address % 8)) {   // even word on block
+      memcpy(&(L1Cache[0]), &(data), WORD_SIZE);
+    } else { // odd word on block
+      memcpy(&(L1Cache[WORD_SIZE]), &(data), WORD_SIZE);
+    }
+    time += L1_WRITE_TIME;
+    Line->Dirty = 1;
+  }
+    
+  address = address + BLOCK_SIZE;
 }
 
-void read(uint32_t address, uint8_t **data) {
+void read(uint32_t address, uint8_t *data) {
   accessL1(address, data, MODE_READ);
 }
 
-void write(uint32_t address, uint8_t **data) {
+void write(uint32_t address, uint8_t *data) {
   accessL1(address, data, MODE_WRITE);
 }
