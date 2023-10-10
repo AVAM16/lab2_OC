@@ -4,7 +4,7 @@ uint8_t L1Cache[L1_SIZE];
 uint8_t L2Cache[L2_SIZE];
 uint8_t DRAM[DRAM_SIZE];
 uint32_t time;
-Cache SimpleCache;
+Cache L1;
 
 /**************** Time Manipulation ***************/
 void resetTime() { time = 0; }
@@ -30,7 +30,7 @@ void accessDRAM(uint32_t address, uint8_t *data, uint32_t mode) {
 
 /*********************** L1 cache *************************/
 
-void initCache() { SimpleCache.init = 0; }
+void initCache() { L1.init = 0; }
 
 void accessL1(uint32_t address, uint8_t *data, uint32_t mode) {
 
@@ -38,18 +38,18 @@ void accessL1(uint32_t address, uint8_t *data, uint32_t mode) {
   uint8_t TempBlock[BLOCK_SIZE];
 
   /* init cache */
-  if (SimpleCache.init == 0) {
-    // SimpleCache.lines = (CacheLine *)malloc((L1_SIZE/BLOCK_SIZE) * sizeof(CacheLine));
+  if (L1.init == 0) {
+    // L1.lines = (CacheLine *)malloc((L1_SIZE/BLOCK_SIZE) * sizeof(CacheLine));
     for (int i = 0; i < L1_SIZE/BLOCK_SIZE; i++) {
-      SimpleCache.lines[i].Valid = 0;
-      SimpleCache.lines[i].Dirty = 0;
-      SimpleCache.lines[i].Tag = 0;
+      L1.lines[i].Valid = 0;
+      L1.lines[i].Dirty = 0;
+      L1.lines[i].Tag = 0;
       // for (int j =0; j< BLOCK_SIZE; j+=WORD_SIZE){
-      //   SimpleCache.lines[i].dados=0;
+      //   L1.lines[i].dados=0;
       // }
       
     }
-    SimpleCache.init = 1;
+    L1.init = 1;
   }
 
   Tag = address / ((L1_SIZE / BLOCK_SIZE) * BLOCK_SIZE);
@@ -57,7 +57,7 @@ void accessL1(uint32_t address, uint8_t *data, uint32_t mode) {
   offset = address % BLOCK_SIZE;
 
     /* access Cache*/
-  CacheLine *Line = &SimpleCache.lines[index];
+  CacheLine *Line = &L1.lines[index];
   if (!Line->Valid || Line->Tag != Tag) {         // if block not present - miss
       accessDRAM(address-offset, TempBlock, MODE_READ); // get new block from DRAM
 
