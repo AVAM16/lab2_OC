@@ -7,7 +7,7 @@ TARGET3=L2Cache
 all:
 	$(CC) $(CFLAGS) SimpleProgram.c SimpleCache.c -o $(TARGET)
 	$(CC) $(CFLAGS) SimpleProgram.c L1Cache.c -o $(TARGET2)
-	$(CC) $(CFLAGS) SimpleProgram.c L2Cache.c -o $(TARGET3)
+	$(CC) $(CFLAGS) SimpleProgram.c L2Cache.c -o $(TARGET3) -g
 
 clean:
 	rm $(TARGET)
