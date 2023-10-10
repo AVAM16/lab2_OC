@@ -1,4 +1,4 @@
-#include "L2Cache.h"
+#include "W2Cache.h"
 uint8_t DRAM[DRAM_SIZE];
 uint32_t time;
 Cache LCaches;

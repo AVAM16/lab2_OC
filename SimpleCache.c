@@ -1,7 +1,6 @@
 #include "SimpleCache.h"
 
 uint8_t L1Cache[L1_SIZE];
-uint8_t L2Cache[L2_SIZE];
 uint8_t DRAM[DRAM_SIZE];
 uint32_t time;
 Cache SimpleCache;
@@ -34,7 +33,7 @@ void initCache() { SimpleCache.init = 0; }
 
 void accessL1(uint32_t address, uint8_t *data, uint32_t mode) {
 
-  uint32_t index, Tag, MemAddress;
+  uint32_t Tag, MemAddress;
   uint8_t TempBlock[BLOCK_SIZE];
 
   /* init cache */
