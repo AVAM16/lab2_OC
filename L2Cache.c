@@ -48,11 +48,7 @@ void accessL2(uint32_t address, uint8_t *data, uint32_t mode){
   offset=address%BLOCK_SIZE;
 
   CacheLine *Line= &LCaches.lines2[index];
-  int exist=1;
   if (!Line->Valid || Line->Tag!=Tag){
-    exist=0;
-  }
-  if (!exist){
     //printf("nao existe em L2\n");
     if (LCaches.lines2[index].Valid && LCaches.lines2[index].Dirty){
       accessDRAM(Line->Tag * (L2_SIZE / BLOCK_SIZE) * BLOCK_SIZE + index * BLOCK_SIZE, LCaches.lines2[index].dados, MODE_WRITE);

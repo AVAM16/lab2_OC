@@ -7,7 +7,7 @@
 #include <stdint.h>
 #include "Cache.h"
 
-#define L2WAYS 2
+#define L2_WAYS 2
 void resetTime();
 
 uint32_t getTime();
@@ -31,7 +31,7 @@ typedef struct Cache {
   uint32_t init1;
   uint32_t init2;
   CacheLine lines1[L1_SIZE/BLOCK_SIZE];
-  CacheLine lines2[L2_SIZE/BLOCK_SIZE];
+  CacheLine lines2[L2_SIZE/(BLOCK_SIZE*L2_WAYS)][L2_WAYS];
 } Cache;
 
 /*********************** Interfaces *************************/

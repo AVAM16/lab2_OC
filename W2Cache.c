@@ -9,18 +9,18 @@ void resetTime() { time = 0; }
 uint32_t getTime() { return time; }
 
 /****************  RAM memory (byte addressable) ***************/
-void accessDRAM(uint32_t address, uint8_t *data, uint32_t mode) {
+void accessDRAM(uint32_t address, uint8_t *dados, uint32_t mode) {
 
   if (address >= DRAM_SIZE - WORD_SIZE + 1)
     exit(-1);
 
   if (mode == MODE_READ) {
-    memcpy(data, &(DRAM[address]), BLOCK_SIZE);
+    memcpy(dados, &(DRAM[address]), BLOCK_SIZE);
     time += DRAM_READ_TIME;
   }
 
   if (mode == MODE_WRITE) {
-    memcpy(&(DRAM[address]), data, BLOCK_SIZE);
+    memcpy(&(DRAM[address]), dados, BLOCK_SIZE);
     time += DRAM_WRITE_TIME;
   }
 }
@@ -29,59 +29,68 @@ void accessDRAM(uint32_t address, uint8_t *data, uint32_t mode) {
 
 void initCache() { LCaches.init1=0; LCaches.init2=0; }
 
-void accessL2(uint32_t address, uint8_t *data, uint32_t mode){
+void accessL2(uint32_t address, uint8_t *dados, uint32_t mode){
   unsigned int Tag, index, offset;
 
   if (LCaches.init2==0){
-    for (int i =0; i<L2_SIZE/BLOCK_SIZE; i++){
-      LCaches.lines2[i].Dirty=0;
-      LCaches.lines2[i].Tag=0;
-      LCaches.lines2[i].Valid=0;
-      // for (int j=0; j<BLOCK_SIZE; j+=WORD_SIZE){
-      //   LCaches.lines2[i].dados[j]=0;
-      // }
+    for (int i =0; i<L2_SIZE/(L2_WAYS); i++){
+      for (int j=0; j<L2_WAYS; j++){
+        LCaches.lines2[i][j].Dirty=0;
+        LCaches.lines2[i][j].Tag=0;
+        LCaches.lines2[i][j].Valid=0;
+        for (int k=0; k<BLOCK_SIZE; k+=WORD_SIZE){
+          LCaches.lines2[i][j].dados[k]=0;
+        }
+      }
     }
     LCaches.init2=1;
   }
-  Tag=address/L2_SIZE;
-  index= (address/BLOCK_SIZE) % (L2_SIZE/BLOCK_SIZE);
+  Tag=address/((L2_SIZE / (BLOCK_SIZE * L2_WAYS)) * BLOCK_SIZE);
+  index= (address/BLOCK_SIZE) % (L2_SIZE/(BLOCK_SIZE*L2_WAYS));
   offset=address%BLOCK_SIZE;
 
-  CacheLine *Line= &LCaches.lines2[index];
-  int exist=1;
-  if (!Line->Valid || Line->Tag!=Tag){
-    exist=0;
-  }
-  if (!exist){
-    //printf("nao existe em L2\n");
-    if (LCaches.lines2[index].Valid && LCaches.lines2[index].Dirty){
-      accessDRAM(Line->Tag * (L2_SIZE / BLOCK_SIZE) * BLOCK_SIZE + index * BLOCK_SIZE, LCaches.lines2[index].dados, MODE_WRITE);
-      LCaches.lines2[index].dados[0]=0;
-      LCaches.lines2[index].dados[WORD_SIZE]=0;
+  int found = 0;
+  int i = 0;
+  while (i < L2_WAYS && !found) {
+    if (LCaches.lines2[index][i].Valid && LCaches.lines2[index][i].Tag == Tag) {
+      found = 1;
+    } else {
+      i++;
     }
-    accessDRAM(address - offset, LCaches.lines2[index].dados, MODE_READ);
+  }
 
-    LCaches.lines2[index].Valid=1;
-    LCaches.lines2[index].Tag=Tag;
-    LCaches.lines2[index].Dirty=0;
+  if (!found) {
+    i = 0;
+    while (i < L2_WAYS && LCaches.lines2[index][i].Valid) {
+      i++;
+    }
+    if (LCaches.lines2[index][i].Dirty) {
+      accessDRAM(LCaches.lines2[index][i].Tag * (L2_SIZE / (BLOCK_SIZE * L2_WAYS)) * BLOCK_SIZE + index * BLOCK_SIZE, LCaches.lines2[index][i].dados, MODE_WRITE);
+      LCaches.lines2[index][i].dados[0] = 0;
+      LCaches.lines2[index][i].dados[WORD_SIZE] = 0;
+    }
 
-    if (mode == MODE_READ) {    // read data from cache line
-      memcpy(data, &(LCaches.lines2[index].dados), BLOCK_SIZE);
+    accessDRAM(address - offset, LCaches.lines2[index][i].dados, MODE_READ);
+
+    LCaches.lines2[index][i].Valid = 1;
+    LCaches.lines2[index][i].Dirty = 0;
+    LCaches.lines2[index][i].Tag = Tag;
+
+    if (mode == MODE_READ) {
+      memcpy(dados, &(LCaches.lines2[index][i].dados), BLOCK_SIZE);
       time += L2_READ_TIME;
     }
-  } else{
-    //printf("existe em L2\n");
-    if (mode == MODE_READ) {    // read data from cache line
-      memcpy(data, &(LCaches.lines2[index].dados), BLOCK_SIZE);
+  } else {
+    if (mode == MODE_READ) {
+      memcpy(dados, &(LCaches.lines2[index][i].dados), BLOCK_SIZE);
       time += L1_READ_TIME;
     }
-    if (mode == MODE_WRITE) { // write data from cache line
-      memcpy(&(LCaches.lines2[index].dados), data, BLOCK_SIZE);
+    if (mode == MODE_WRITE) {
+      memcpy(&(LCaches.lines2[index][i].dados), dados, BLOCK_SIZE);
       time += L1_WRITE_TIME;
-      Line->Dirty = 1;
+      LCaches.lines2[index][i].Dirty = 1;
     }
   }
-
 }
 
 
@@ -89,7 +98,9 @@ void accessL2(uint32_t address, uint8_t *data, uint32_t mode){
 
 
 
-void accessL1(uint32_t address, uint8_t *data, uint32_t mode) {
+
+
+void accessL1(uint32_t address, uint8_t *dados, uint32_t mode) {
 
   uint32_t index, Tag, offset;
   //uint8_t TempBlock[BLOCK_SIZE];
@@ -116,12 +127,12 @@ void accessL1(uint32_t address, uint8_t *data, uint32_t mode) {
   CacheLine *Line = &LCaches.lines1[index];
     if (Line->Valid && Line->Tag==Tag){
       //printf("está em L1\n");
-      if (mode == MODE_READ) {    // read data from cache line
-        memcpy(data, &(Line->dados[offset]), WORD_SIZE);
+      if (mode == MODE_READ) {    // read dados from cache line
+        memcpy(dados, &(Line->dados[offset]), WORD_SIZE);
         time += L1_READ_TIME;
       }
-      if (mode == MODE_WRITE) { // write data from cache line
-        memcpy(&(Line->dados[offset]), data, WORD_SIZE);
+      if (mode == MODE_WRITE) { // write dados from cache line
+        memcpy(&(Line->dados[offset]), dados, WORD_SIZE);
         time += L1_WRITE_TIME;
         Line->Dirty = 1;
       }
@@ -137,14 +148,14 @@ void accessL1(uint32_t address, uint8_t *data, uint32_t mode) {
 
       accessL2(address-offset, Line->dados, MODE_READ);
       if (mode==MODE_READ){
-        memcpy(data, &(Line->dados[offset]), WORD_SIZE);
+        memcpy(dados, &(Line->dados[offset]), WORD_SIZE);
         time+=L1_READ_TIME;
         LCaches.lines1[index].Dirty=0;
         LCaches.lines1[index].Valid=1;
         LCaches.lines1[index].Tag=Tag;
       }
       if (mode==MODE_WRITE){
-        memcpy(&(Line->dados[offset]), data, WORD_SIZE);
+        memcpy(&(Line->dados[offset]), dados, WORD_SIZE);
         time+=L1_WRITE_TIME;
         LCaches.lines1[index].Dirty=1;
         LCaches.lines1[index].Valid=1;
@@ -154,10 +165,10 @@ void accessL1(uint32_t address, uint8_t *data, uint32_t mode) {
  
 }
 
-void read(uint32_t address, uint8_t *data) {
-  accessL1(address, data, MODE_READ);
+void read(uint32_t address, uint8_t *dados) {
+  accessL1(address, dados, MODE_READ);
 }
 
-void write(uint32_t address, uint8_t *data) {
-  accessL1(address, data, MODE_WRITE);
+void write(uint32_t address, uint8_t *dados) {
+  accessL1(address, dados, MODE_WRITE);
 }
