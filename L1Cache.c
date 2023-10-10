@@ -1,7 +1,6 @@
 #include "L1Cache.h"
 
 uint8_t L1Cache[L1_SIZE];
-uint8_t L2Cache[L2_SIZE];
 uint8_t DRAM[DRAM_SIZE];
 uint32_t time;
 Cache L1;
@@ -91,8 +90,6 @@ void accessL1(uint32_t address, uint8_t *data, uint32_t mode) {
     time += L1_WRITE_TIME;
     Line->Dirty = 1;
   }
-    
-  address = address + BLOCK_SIZE;
 }
 
 void read(uint32_t address, uint8_t *data) {

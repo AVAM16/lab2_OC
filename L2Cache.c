@@ -1,6 +1,5 @@
 #include "L2Cache.h"
 
-uint8_t L1Cache[L1_SIZE];
 uint8_t L2Cache[L2_SIZE];
 uint8_t DRAM[DRAM_SIZE];
 uint32_t time;
@@ -35,6 +34,7 @@ void initL2() { L2.init = 0; }
 void accessL2(uint32_t address, uint8_t *data, uint32_t mode) {
 
   uint32_t index, Tag, offset;
+  uint8_t TempBlock[BLOCK_SIZE];
 
   if (L2.init == 0) {
     for (int i = 0; i < (L2_SIZE / BLOCK_SIZE); i++) {
@@ -49,56 +49,40 @@ void accessL2(uint32_t address, uint8_t *data, uint32_t mode) {
   index = (address / BLOCK_SIZE) % (L2_SIZE / BLOCK_SIZE);
   offset = address % BLOCK_SIZE;
 
-  int found = 0;
-  int i = 0;
-  if (L2.lines2[index][i].Valid && L2.lines2[index][i].Tag == Tag) {
-    found = 1;
+    /* access Cache*/
+  CacheLine *Line = &L2.lines2[index];
+  if (!Line->Valid || Line->Tag != Tag) {         // if block not present - miss
+      accessDRAM(address-offset, TempBlock, MODE_READ); // get new block from DRAM
 
-
-  if (!found) {
-    i = 0;
-    while (i < ASSOCIATIVITY_L2 && L2.lines2[index][i].Valid) {
-      i++;
-    }
-    if (i == ASSOCIATIVITY_L2) {
-      i = 0;
-      unsigned int min = L2.lines2[index][0].Time;
-      for (int j = 1; j < ASSOCIATIVITY_L2; j++) {
-        if (L2.lines2[index][j].Time < min) {
-          min = L2.lines2[index][j].Time;
-          i = j;
-        }
+      if ((Line->Valid) && (Line->Dirty)) { // line has dirty block
+        accessDRAM(address-offset, &(L2Cache[index*BLOCK_SIZE]),
+                  MODE_WRITE); // then write back old block
       }
-    }
-    if (L2.lines2[index][i].Dirty) {
-      accessDRAM(L2.lines2[index][i].Tag * (L2_SIZE / (BLOCK_SIZE * ASSOCIATIVITY_L2)) * BLOCK_SIZE + index * BLOCK_SIZE, L2.lines2[index][i].Data, MODE_WRITE);
-      L2.lines2[index][i].Data[0] = 0;
-      L2.lines2[index][i].Data[WORD_SIZE] = 0;
-    }
 
-    accessDRAM(address - offset, L2.lines2[index][i].Data, MODE_READ);
+      memcpy(&(L2Cache[index*BLOCK_SIZE]), TempBlock,
+            BLOCK_SIZE); // copy new block to cache line
+      Line->Valid = 1;
+      Line->Tag = Tag;
+      Line->Dirty = 0;
+    } // if miss, then replaced with the correct block
 
-    L2.lines2[index][i].Valid = 1;
-    L2.lines2[index][i].Dirty = 0;
-    L2.lines2[index][i].Tag = Tag;
-    L2.lines2[index][i].Time = time;
+  if (mode == MODE_READ) {    // read data from cache line
+    if (0 == (address % 64)) { // even word on block
+      memcpy(data, &(L2Cache[index*BLOCK_SIZE]), WORD_SIZE);
+    } else { // odd word on block
+      memcpy(data, &(L2Cache[index*BLOCK_SIZE+ offset]), WORD_SIZE);
+    }
+    time += L2_READ_TIME;
+  }
 
-    if (mode == MODE_READ) {
-      memcpy(data, &(L2.lines2[index][i].Data), BLOCK_SIZE);
-      time += L2_READ_TIME;
+  if (mode == MODE_WRITE) { // write data from cache line
+    if (!(address % 64)) {   // even word on block
+      memcpy(&(L2Cache[index*BLOCK_SIZE]), data, WORD_SIZE);
+    } else { // odd word on block
+      memcpy(&(L2Cache[index*BLOCK_SIZE+offset]), data, WORD_SIZE);
     }
-  } else {
-    if (mode == MODE_READ) {
-      memcpy(data, &(L2.lines2[index][i].Data), BLOCK_SIZE);
-      time += L1_READ_TIME;
-      L2.lines2[index][i].Time = time;
-    }
-    if (mode == MODE_WRITE) {
-      memcpy(&(L2.lines2[index][i].Data), data, BLOCK_SIZE);
-      time += L1_WRITE_TIME;
-      L2.lines2[index][i].Dirty = 1;
-      L2.lines2[index][i].Time = time;
-    }
+    time += L2_WRITE_TIME;
+    Line->Dirty = 1;
   }
 }
 
