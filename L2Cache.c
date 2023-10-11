@@ -34,12 +34,10 @@ void accessL2(uint32_t address, uint8_t *data, uint32_t mode){
 
   if (LCaches.init2==0){
     for (int i =0; i<L2_SIZE/BLOCK_SIZE; i++){
-      LCaches.lines2[i].Dirty=0;
-      LCaches.lines2[i].Tag=0;
-      LCaches.lines2[i].Valid=0;
-      // for (int j=0; j<BLOCK_SIZE; j+=WORD_SIZE){
-      //   LCaches.lines2[i].dados[j]=0;
-      // }
+      CacheLine *Line= &LCaches.lines2[i];
+      Line->Dirty=0;
+      Line->Tag=0;
+      Line->Valid=0;
     }
     LCaches.init2=1;
   }
@@ -94,12 +92,10 @@ void accessL1(uint32_t address, uint8_t *data, uint32_t mode) {
   if (LCaches.init1 == 0) {
     // L1.lines = (CacheLine *)malloc((L1_SIZE/BLOCK_SIZE) * sizeof(CacheLine));
     for (int i = 0; i < L1_SIZE/BLOCK_SIZE; i++) {
-      LCaches.lines1[i].Valid = 0;
-      LCaches.lines1[i].Dirty = 0;
-      LCaches.lines1[i].Tag = 0;
-      // for (int j=0; i < BLOCK_SIZE; j+=4){
-      //   LCaches.lines1[i].dados[j]=0;
-      // } 
+      CacheLine *Line = &LCaches.lines1[i];
+      Line->Valid = 0;
+      Line->Dirty = 0;
+      Line->Tag = 0;
     }
     LCaches.init1 = 1;
   }
@@ -134,16 +130,16 @@ void accessL1(uint32_t address, uint8_t *data, uint32_t mode) {
       if (mode==MODE_READ){
         memcpy(data, &(Line->dados[offset]), WORD_SIZE);
         time+=L1_READ_TIME;
-        LCaches.lines1[index].Dirty=0;
-        LCaches.lines1[index].Valid=1;
-        LCaches.lines1[index].Tag=Tag;
+        Line->Dirty=0;
+        Line->Valid=1;
+        Line->Tag=Tag;
       }
       if (mode==MODE_WRITE){
         memcpy(&(Line->dados[offset]), data, WORD_SIZE);
         time+=L1_WRITE_TIME;
-        LCaches.lines1[index].Dirty=1;
-        LCaches.lines1[index].Valid=1;
-        LCaches.lines1[index].Tag=Tag;
+        Line->Dirty=1;
+        Line->Valid=1;
+        Line->Tag=Tag;
       }
     } 
  

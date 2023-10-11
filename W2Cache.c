@@ -36,9 +36,10 @@ void accessL2(uint32_t address, uint8_t *dados, uint32_t mode){
     //printf("meter os atributos\n");
     for (int i =0; i<L2_SIZE/(BLOCK_SIZE*L2_WAYS); i++){
       for (int j=0; j<L2_WAYS; j++){
-        LCaches.lines2[i][j].Dirty=0;
-        LCaches.lines2[i][j].Tag=0;
-        LCaches.lines2[i][j].Valid=0;
+        CacheLine *Line= &LCaches.lines2[i][j];
+        Line->Dirty=0;
+        Line->Tag=0;
+        Line->Valid=0;
       }
     }
     LCaches.init2=1;
@@ -47,46 +48,50 @@ void accessL2(uint32_t address, uint8_t *dados, uint32_t mode){
   index= (address/BLOCK_SIZE) % (L2_SIZE/(BLOCK_SIZE*L2_WAYS));
   offset=address%BLOCK_SIZE;
 
-  int found = 0;
+  int exist = 0;
   int i = 0;
-  while (i < L2_WAYS && !found) {
-    if (LCaches.lines2[index][i].Valid && LCaches.lines2[index][i].Tag == Tag) {
-      found = 1;
+  while (i < L2_WAYS && !exist) {
+    CacheLine *Line = &LCaches.lines2[index][i];
+    if (Line->Valid && Line->Tag == Tag) {
+      exist = 1;
     } else {
       i++;
     }
   }
 
-  if (!found) {
+  if (!exist) {
     i = 0;
-    while (i < L2_WAYS && LCaches.lines2[index][i].Valid) {
+    CacheLine *Line = &LCaches.lines2[index][i];
+    while (i < L2_WAYS && Line->Valid) {
       i++;
+      Line = &LCaches.lines2[index][i];
     }
-    if (LCaches.lines2[index][i].Dirty) {
-      accessDRAM(LCaches.lines2[index][i].Tag * (L2_SIZE / (BLOCK_SIZE * L2_WAYS)) * BLOCK_SIZE + index * BLOCK_SIZE, LCaches.lines2[index][i].dados, MODE_WRITE);
-      LCaches.lines2[index][i].dados[0] = 0;
-      LCaches.lines2[index][i].dados[WORD_SIZE] = 0;
+    if (Line->Dirty) {
+      accessDRAM(Line->Tag * (L2_SIZE / (BLOCK_SIZE * L2_WAYS)) * BLOCK_SIZE + index * BLOCK_SIZE, Line->dados, MODE_WRITE);
+      Line->dados[0] = 0;
+      Line->dados[WORD_SIZE] = 0;
     }
 
-    accessDRAM(address - offset, LCaches.lines2[index][i].dados, MODE_READ);
+    accessDRAM(address - offset, Line->dados, MODE_READ);
 
-    LCaches.lines2[index][i].Valid = 1;
-    LCaches.lines2[index][i].Dirty = 0;
-    LCaches.lines2[index][i].Tag = Tag;
+    Line->Valid = 1;
+    Line->Dirty = 0;
+    Line->Tag = Tag;
 
     if (mode == MODE_READ) {
-      memcpy(dados, &(LCaches.lines2[index][i].dados), BLOCK_SIZE);
+      memcpy(dados, &(Line->dados), BLOCK_SIZE);
       time += L2_READ_TIME;
     }
   } else {
+    CacheLine *Line = &LCaches.lines2[index][i];
     if (mode == MODE_READ) {
-      memcpy(dados, &(LCaches.lines2[index][i].dados), BLOCK_SIZE);
+      memcpy(dados, &(Line->dados), BLOCK_SIZE);
       time += L1_READ_TIME;
     }
     if (mode == MODE_WRITE) {
-      memcpy(&(LCaches.lines2[index][i].dados), dados, BLOCK_SIZE);
+      memcpy(&(Line->dados), dados, BLOCK_SIZE);
       time += L1_WRITE_TIME;
-      LCaches.lines2[index][i].Dirty = 1;
+      Line->Dirty = 1;
     }
   }
 }
@@ -101,9 +106,10 @@ void accessL1(uint32_t address, uint8_t *dados, uint32_t mode) {
   /* init cache */
   if (LCaches.init1 == 0) {
     for (int i = 0; i < L1_SIZE/BLOCK_SIZE; i++) {
-      LCaches.lines1[i].Valid = 0;
-      LCaches.lines1[i].Dirty = 0;
-      LCaches.lines1[i].Tag = 0; 
+      CacheLine *Line = &LCaches.lines1[i];
+      Line->Valid = 0;
+      Line->Dirty = 0;
+      Line->Tag = 0; 
     }
     LCaches.init1 = 1;
   }
