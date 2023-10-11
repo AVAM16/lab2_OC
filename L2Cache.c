@@ -49,7 +49,7 @@ void accessL2(uint32_t address, uint8_t *data, uint32_t mode){
   if (!Line->Valid || Line->Tag!=Tag){
     //printf("nao existe em L2\n");
     if (Line->Valid && Line->Dirty){
-      accessDRAM(Line->Tag * (L2_SIZE / BLOCK_SIZE) * BLOCK_SIZE + index * BLOCK_SIZE, Line->dados, MODE_WRITE);
+      accessDRAM(address-offset, Line->dados, MODE_WRITE);
       Line->dados[0]=0;
       Line->dados[WORD_SIZE]=0;
     }
