@@ -50,29 +50,29 @@ void accessL2(uint32_t address, uint8_t *data, uint32_t mode){
   CacheLine *Line= &LCaches.lines2[index];
   if (!Line->Valid || Line->Tag!=Tag){
     //printf("nao existe em L2\n");
-    if (LCaches.lines2[index].Valid && LCaches.lines2[index].Dirty){
-      accessDRAM(Line->Tag * (L2_SIZE / BLOCK_SIZE) * BLOCK_SIZE + index * BLOCK_SIZE, LCaches.lines2[index].dados, MODE_WRITE);
-      LCaches.lines2[index].dados[0]=0;
-      LCaches.lines2[index].dados[WORD_SIZE]=0;
+    if (Line->Valid && Line->Dirty){
+      accessDRAM(Line->Tag * (L2_SIZE / BLOCK_SIZE) * BLOCK_SIZE + index * BLOCK_SIZE, Line->dados, MODE_WRITE);
+      Line->dados[0]=0;
+      Line->dados[WORD_SIZE]=0;
     }
-    accessDRAM(address - offset, LCaches.lines2[index].dados, MODE_READ);
+    accessDRAM(address - offset, Line->dados, MODE_READ);
 
-    LCaches.lines2[index].Valid=1;
-    LCaches.lines2[index].Tag=Tag;
-    LCaches.lines2[index].Dirty=0;
+    Line->Valid=1;
+    Line->Tag=Tag;
+    Line->Dirty=0;
 
     if (mode == MODE_READ) {    // read data from cache line
-      memcpy(data, &(LCaches.lines2[index].dados), BLOCK_SIZE);
+      memcpy(data, &(Line->dados), BLOCK_SIZE);
       time += L2_READ_TIME;
     }
   } else{
     //printf("existe em L2\n");
     if (mode == MODE_READ) {    // read data from cache line
-      memcpy(data, &(LCaches.lines2[index].dados), BLOCK_SIZE);
+      memcpy(data, &(Line->dados), BLOCK_SIZE);
       time += L1_READ_TIME;
     }
     if (mode == MODE_WRITE) { // write data from cache line
-      memcpy(&(LCaches.lines2[index].dados), data, BLOCK_SIZE);
+      memcpy(&(Line->dados), data, BLOCK_SIZE);
       time += L1_WRITE_TIME;
       Line->Dirty = 1;
     }
@@ -124,7 +124,6 @@ void accessL1(uint32_t address, uint8_t *data, uint32_t mode) {
     }
     else{
       //aceder a L2
-      //printf("não está em L1\n");
       if (Line->Dirty){
         accessL2((Line->Tag) *(L1_SIZE/BLOCK_SIZE)* BLOCK_SIZE + index*BLOCK_SIZE, LCaches.lines1[index].dados, MODE_WRITE);
         Line->dados[0] = 0;

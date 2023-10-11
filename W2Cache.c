@@ -31,16 +31,14 @@ void initCache() { LCaches.init1=0; LCaches.init2=0; }
 
 void accessL2(uint32_t address, uint8_t *dados, uint32_t mode){
   unsigned int Tag, index, offset;
-
+  //printf("entrei em L2\n");
   if (LCaches.init2==0){
-    for (int i =0; i<L2_SIZE/(L2_WAYS); i++){
+    //printf("meter os atributos\n");
+    for (int i =0; i<L2_SIZE/(BLOCK_SIZE*L2_WAYS); i++){
       for (int j=0; j<L2_WAYS; j++){
         LCaches.lines2[i][j].Dirty=0;
         LCaches.lines2[i][j].Tag=0;
         LCaches.lines2[i][j].Valid=0;
-        for (int k=0; k<BLOCK_SIZE; k+=WORD_SIZE){
-          LCaches.lines2[i][j].dados[k]=0;
-        }
       }
     }
     LCaches.init2=1;
@@ -95,11 +93,6 @@ void accessL2(uint32_t address, uint8_t *dados, uint32_t mode){
 
 
 
-
-
-
-
-
 void accessL1(uint32_t address, uint8_t *dados, uint32_t mode) {
 
   uint32_t index, Tag, offset;
@@ -107,14 +100,10 @@ void accessL1(uint32_t address, uint8_t *dados, uint32_t mode) {
 
   /* init cache */
   if (LCaches.init1 == 0) {
-    // L1.lines = (CacheLine *)malloc((L1_SIZE/BLOCK_SIZE) * sizeof(CacheLine));
     for (int i = 0; i < L1_SIZE/BLOCK_SIZE; i++) {
       LCaches.lines1[i].Valid = 0;
       LCaches.lines1[i].Dirty = 0;
-      LCaches.lines1[i].Tag = 0;
-      // for (int j=0; i < BLOCK_SIZE; j+=4){
-      //   LCaches.lines1[i].dados[j]=0;
-      // } 
+      LCaches.lines1[i].Tag = 0; 
     }
     LCaches.init1 = 1;
   }
@@ -141,25 +130,25 @@ void accessL1(uint32_t address, uint8_t *dados, uint32_t mode) {
       //aceder a L2
       //printf("não está em L1\n");
       if (Line->Dirty){
-        accessL2((Line->Tag) *(L1_SIZE/BLOCK_SIZE)* BLOCK_SIZE + index*BLOCK_SIZE, LCaches.lines1[index].dados, MODE_WRITE);
+        accessL2((Line->Tag) *(L1_SIZE/BLOCK_SIZE)* BLOCK_SIZE + index*BLOCK_SIZE, Line->dados, MODE_WRITE);
         Line->dados[0] = 0;
         Line->dados[WORD_SIZE] = 0;
       }
-
+      //printf("aceder a L2\n");
       accessL2(address-offset, Line->dados, MODE_READ);
       if (mode==MODE_READ){
         memcpy(dados, &(Line->dados[offset]), WORD_SIZE);
         time+=L1_READ_TIME;
-        LCaches.lines1[index].Dirty=0;
-        LCaches.lines1[index].Valid=1;
-        LCaches.lines1[index].Tag=Tag;
+        Line->Dirty=0;
+        Line->Valid=1;
+        Line->Tag=Tag;
       }
       if (mode==MODE_WRITE){
         memcpy(&(Line->dados[offset]), dados, WORD_SIZE);
         time+=L1_WRITE_TIME;
-        LCaches.lines1[index].Dirty=1;
-        LCaches.lines1[index].Valid=1;
-        LCaches.lines1[index].Tag=Tag;
+        Line->Dirty=1;
+        Line->Valid=1;
+        Line->Tag=Tag;
       }
     } 
  
