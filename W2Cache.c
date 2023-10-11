@@ -67,7 +67,7 @@ void accessL2(uint32_t address, uint8_t *dados, uint32_t mode){
       Line = &LCaches.lines2[index][i];
     }
     if (Line->Dirty) {
-      accessDRAM(Line->Tag * (L2_SIZE / (BLOCK_SIZE * L2_WAYS)) * BLOCK_SIZE + index * BLOCK_SIZE, Line->dados, MODE_WRITE);
+      accessDRAM(address-offset, Line->dados, MODE_WRITE);
       Line->dados[0] = 0;
       Line->dados[WORD_SIZE] = 0;
     }
